@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detavan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a18;
+    --paper: #f5f0e8;
+    --paper2: #ede8dc;
+    --accent: #c45c2a;
+    --accent2: #2a7a5c;
+    --muted: #8a8578;
+    --border: #d4cfc3;
+    --route: #c45c2a;
+    --radius-fill: rgba(42, 122, 92, 0.08);
+    --radius-stroke: rgba(42, 122, 92, 0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--ink);
+    color: var(--ink);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 20px;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 1.4rem;
+    letter-spacing: 0.02em;
+  }
+
+  header span {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .app {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 320px;
+    min-width: 280px;
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar-inner {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sidebar-inner::-webkit-scrollbar { width: 4px; }
+  .sidebar-inner::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  /* Search box */
+  .search-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .search-row input {
+    flex: 1;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-row input:focus { border-color: var(--accent); }
+
+  button {
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+
+  .btn-add {
+    background: var(--accent);
+    color: white;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #a84d22; }
+
+  .hint {
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Points collapsible section */
+  .points-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .points-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--ink);
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: background 0.15s;
+  }
+  .points-toggle:hover { background: var(--border); }
+
+  /* Points list */
+  .points-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .points-list::-webkit-scrollbar { width: 4px; }
+  .points-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .point-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 10px;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+  .point-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 0.68rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .point-name {
+    flex: 1;
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .drag-handle {
+    cursor: grab;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 0 2px;
+    user-select: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+
+  .btn-remove {
+    background: none;
+    color: var(--muted);
+    font-size: 1rem;
+    padding: 0 2px;
+    line-height: 1;
+  }
+  .btn-remove:hover { color: #c0392b; }
+
+  /* Controls */
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent2);
+  }
+
+  .range-val {
+    font-size: 0.75rem;
+    width: 60px;
+    text-align: right;
+    color: var(--accent2);
+    font-weight: 500;
+  }
+
+  .toggle-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 7px 6px;
+    font-size: 0.7rem;
+    background: white;
+    color: var(--muted);
+    border-radius: 0;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+  .toggle-btn.active {
+    background: var(--accent2);
+    color: white;
+  }
+  .toggle-btn:not(.active):hover { background: var(--paper2); }
+
+  /* Time inputs */
+  .time-row {
+    display: flex;
+    gap: 8px;
+  }
+  .time-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .time-field label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .time-field input[type="time"],
+  .time-field input[type="date"] {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink);
+    outline: none;
+    width: 100%;
+  }
+  .time-field input:focus { border-color: var(--accent); }
+
+  /* Action button */
+  .btn-route {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 11px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    width: 100%;
+    margin-top: 4px;
+  }
+  .btn-route:hover { background: #333; }
+  .btn-route:disabled { background: var(--muted); cursor: not-allowed; }
+
+  /* Info panel */
+  .info-panel {
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    display: none;
+  }
+  .info-panel.visible { display: block; }
+  .info-panel strong { color: var(--accent); }
+
+  /* Route steps */
+  .steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .step-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .step-item:last-child { border-bottom: none; }
+  .step-arrow { color: var(--accent); flex-shrink: 0; }
+
+  /* MAP — see .map-wrap */
+
+  /* Leaflet overrides */
+  .leaflet-popup-content-wrapper {
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+
+  /* Loading */
+  .loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.72rem;
+  }
+  .loading.visible { display: flex; }
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-msg {
+    background: #fdf0ed;
+    border: 1px solid #e8c5b8;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 0.72rem;
+    color: #a03020;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Location button overlay on map */
+  .map-wrap {
+    flex: 1;
+    position: relative;
+  }
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+  .btn-locate {
+    position: absolute;
+    bottom: 24px;
+    right: 12px;
+    z-index: 1000;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.15s;
+    padding: 0;
+  }
+  .btn-locate:hover { border-color: var(--accent2); background: #f0faf6; }
+  .btn-locate.active { border-color: var(--accent2); background: var(--accent2); }
+  .btn-locate.active svg { color: white; }
+  .btn-locate svg { color: var(--muted); transition: color 0.15s; }
+  .btn-locate:hover svg { color: var(--accent2); }
+
+  /* Location status pill in sidebar */
+  .loc-status {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    color: var(--muted);
+    padding: 5px 8px;
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  .loc-status.visible { display: flex; }
+  .loc-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .loc-dot.found { background: var(--accent2); }
+  .loc-dot.error { background: #c0392b; }
+  .loc-dot.searching {
+    background: var(--accent2);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Export panel */
+  .export-panel {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 2px;
+  }
+  .export-panel.visible { display: flex; }
+
+  .export-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .export-main-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .btn-export {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 6px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: white;
+  }
+  .btn-gmaps {
+    background: #1a73e8;
+    border-color: #1a73e8;
+  }
+  .btn-gmaps:hover { background: #1558b0; }
+
+  .btn-waze {
+    background: #33ccff;
+    border-color: #33ccff;
+    color: #0d2a36;
+    font-weight: 500;
+  }
+  .btn-waze:hover { background: #0fbde8; }
+
+  .btn-gpx {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+  .btn-gpx:hover { background: #1f6048; }
+
+  .btn-copy {
+    background: white;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    flex: 0 0 auto;
+    padding: 9px 11px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+  .btn-copy:hover { background: var(--paper2); }
+  .btn-copy.copied { color: var(--accent2); border-color: var(--accent2); }
+
+  /* Waze multi-stop list */
+  .waze-stops {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 2px;
+  }
+  .waze-stops.visible { display: flex; }
+
+  .waze-stop-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 0.7rem;
+  }
+  .waze-stop-lbl {
+    width: 20px; height: 20px;
+    background: #33ccff;
+    color: #0d2a36;
+    border-radius: 50%;
+    font-size: 0.62rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .waze-stop-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .waze-stop-link {
+    font-size: 0.65rem;
+    color: #0fbde8;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .waze-stop-link:hover { text-decoration: underline; }
+
+  .export-note {
+    font-size: 0.66rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  
+  .waze-toggle {
+    font-size: 0.68rem;
+    color: #0fbde8;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    text-decoration: underline;
+    text-align: left;
+  }
+
+  /* ─────────────────────────────────────────────
+     MOBILE LAYOUT  (≤ 640px)
+     Sidebar becomes a bottom sheet; map fills screen
+  ───────────────────────────────────────────── */
+  @media (max-width: 640px) {
+
+    body { height: 100dvh; }
+
+    header {
+      padding: 8px 14px;
+      gap: 8px;
+    }
+    header h1 { font-size: 1.1rem; }
+    header span { display: none; }
+
+    .app {
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Map fills all remaining space */
+    .map-wrap {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+
+    /* Bottom sheet */
+    .sidebar {
+      width: 100%;
+      min-width: unset;
+      border-right: none;
+      border-top: 2px solid var(--border);
+      /* collapsed: just the drag handle visible */
+      height: 52px;
+      max-height: 80dvh;
+      overflow: hidden;
+      transition: height 0.3s cubic-bezier(.4,0,.2,1);
+      flex-shrink: 0;
+      position: relative;
+      border-radius: 14px 14px 0 0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+    }
+    .sidebar.sheet-open {
+      height: 75dvh;
+    }
+
+    /* Drag handle pill at top of sheet */
+    .sidebar::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 10px auto 0;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    /* Sheet toggle button — replaces the handle click */
+    .sheet-toggle {
+      display: flex !important;
+    }
+
+    .sidebar-inner {
+      padding: 10px 14px 20px;
+      gap: 12px;
+      /* inner scroll when sheet open */
+      max-height: calc(75dvh - 52px);
+      overflow-y: auto;
+    }
+
+    /* Locate button shifts left on mobile to avoid FAB overlap */
+    .btn-locate {
+      bottom: 70px;
+      right: 14px;
+      width: 44px;
+      height: 44px;
+    }
+
+    /* Sheet open/close FAB */
+    .btn-sheet {
+      display: flex !important;
+      position: absolute;
+      bottom: 70px;
+      right: 68px;
+      z-index: 1000;
+      width: 44px;
+      height: 44px;
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      border-radius: 6px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sheet:hover { background: #333; }
+
+    /* Touch targets — minimum 44px */
+    .btn-add,
+    .btn-route,
+    .btn-export,
+    .points-toggle,
+    .toggle-btn {
+      min-height: 44px;
+    }
+
+    .search-row input { font-size: 16px; /* prevent iOS zoom */ }
+
+    /* Slightly larger text in touch mode */
+    .point-item { padding: 9px 10px; }
+    .point-name { font-size: 0.8rem; }
+
+    /* Export row wraps on small screens */
+    .export-main-row { flex-wrap: wrap; }
+    .export-main-row .btn-export { min-width: calc(50% - 4px); flex: 1 1 calc(50% - 4px); }
+    .btn-copy { flex: 0 0 44px; width: 44px; }
+
+    /* Time fields stack */
+    .time-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Detavan</h1>
+  <span>Otimizador de percursos</span>
+</header>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-inner">
+
+      <!-- ADD POINT -->
+      <div>
+        <div class="section-label">Pontos de interesse</div>
+        <div class="search-row">
+          <input type="text" id="searchInput" placeholder="Buscar endereço ou lugar…" />
+          <button class="btn-add" id="btnAdd">+ Adicionar</button>
+        </div>
+        <div class="hint">Ou clique diretamente no mapa para adicionar.</div>
+      </div>
+
+      <!-- LOCATION STATUS -->
+      <div class="loc-status" id="locStatus">
+        <div class="loc-dot" id="locDot"></div>
+        <span id="locText">Buscando posição…</span>
+      </div>
+
+      <!-- POINTS COLLAPSIBLE -->
+      <div class="points-section" id="pointsSection" style="display:none">
+        <button class="points-toggle" id="pointsToggle" onclick="togglePointsList()">
+          <span id="pointsToggleLabel">▾ 0 pontos adicionados</span>
+        </button>
+        <div id="pointsList" class="points-list" style="display:none">
+        </div>
+      </div>
+      <div class="hint" id="emptyHint">Nenhum ponto adicionado ainda.</div>
+
+      <div class="divider"></div>
+
+      <!-- RADIUS -->
+      <div class="control-group">
+        <div class="section-label">Raio de consideração</div>
+        <div class="range-row">
+          <input type="range" id="radiusSlider" min="1" max="500" value="50" step="1">
+          <span class="range-val" id="radiusVal">50 km</span>
+        </div>
+        <div class="hint">Centro: ponto médio entre os POIs. Pontos fora do raio são destacados.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- ORDER MODE -->
+      <div class="control-group">
+        <div class="section-label">Ordem dos pontos</div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="btnOptimized">Otimizar automaticamente</button>
+          <button class="toggle-btn" id="btnManual">Seguir minha ordem</button>
+        </div>
+        <div class="hint" id="modeHint">A ferramenta buscará a sequência de menor distância total.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- TIME -->
+      <div class="control-group">
+        <div class="section-label">Horário (opcional)</div>
+        <div class="time-row">
+          <div class="time-field">
+            <label>Data</label>
+            <input type="date" id="dateInput">
+          </div>
+          <div class="time-field">
+            <label>Partida</label>
+            <input type="time" id="departureTime" value="09:00">
+          </div>
+        </div>
+        <div class="hint">Usado para estimativa de tempo. Dados de tráfego em desenvolvimento.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- ACTIONS -->
+      <button class="btn-route" id="btnRoute" disabled>Calcular Rota</button>
+
+      <div class="loading" id="loadingMsg">
+        <div class="spinner"></div>
+        <span>Calculando rota via OSRM…</span>
+      </div>
+
+      <div class="error-msg" id="errorMsg"></div>
+
+      <!-- RESULT INFO -->
+      <div class="info-panel" id="infoPanel">
+        <div id="infoSummary"></div>
+        <div style="margin-top:8px;" id="stepsContainer"></div>
+      </div>
+
+      <!-- EXPORT -->
+      <div class="export-panel" id="exportPanel">
+        <div class="export-label">Exportar rota</div>
+
+        <div class="export-main-row">
+          <!-- Google Maps: full route with all waypoints -->
+          <a id="btnGmaps" class="btn-export btn-gmaps" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            Google Maps
+          </a>
+          <!-- Waze: opens to next stop -->
+          <a id="btnWaze" class="btn-export btn-waze" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 512 512" fill="currentColor"><path d="M416 64C225 64 64 209 64 390c0 34 28 58 64 58h256c36 0 64-24 64-58 0-181-161-326-352-326zm-80 240a32 32 0 1 1 0-64 32 32 0 0 1 0 64zm-112 0a32 32 0 1 1 0-64 32 32 0 0 1 0 64zm56 80c-40 0-74-22-90-54h180c-16 32-50 54-90 54z"/></svg>
+            Waze
+          </a>
+          <!-- GPX download -->
+          <button class="btn-export btn-gpx" id="btnGpx">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            GPX
+          </button>
+          <!-- Copy Google Maps link -->
+          <button class="btn-copy" id="btnCopyLink" title="Copiar link Google Maps">⎘</button>
+        </div>
+
+        <!-- Waze multi-stop breakdown (shown when >2 points) -->
+        <div id="wazeStopsWrap" style="display:none">
+          <button class="waze-toggle" id="wazeToggle">▾ Paradas individuais no Waze</button>
+          <div class="waze-stops" id="wazeStops"></div>
+        </div>
+
+        <div class="export-note" id="exportNote"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <button class="btn-locate" id="btnLocate" title="Centralizar na minha posição">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        <circle cx="12" cy="12" r="8" stroke-dasharray="3 2"/>
+      </svg>
+    </button>
+    <!-- Mobile: open/close panel FAB (hidden on desktop via CSS) -->
+    <button class="btn-sheet" id="btnSheet" title="Abrir painel" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="3" y1="15" x2="21" y2="15"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Load Leaflet CSS dynamically too, in case head link was blocked
+  if (!document.querySelector('link[href*="leaflet"]')) {
+    var lc = document.createElement('link');
+    lc.rel = 'stylesheet';
+    lc.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(lc);
+  }
+  // Load Leaflet CSS from cdnjs (on allowlist)
+  var lc2 = document.createElement('link');
+  lc2.rel = 'stylesheet';
+  lc2.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  document.head.appendChild(lc2);
+
+  // Load Leaflet JS — try cdnjs first (on allowlist), fallback to unpkg
+  function tryLoad(urls, onSuccess, onFail) {
+    if (!urls.length) { onFail(); return; }
+    var s = document.createElement('script');
+    s.src = urls[0];
+    s.onload = onSuccess;
+    s.onerror = function() { document.head.removeChild(s); tryLoad(urls.slice(1), onSuccess, onFail); };
+    document.head.appendChild(s);
+  }
+  tryLoad(
+    [
+      'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
+      'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    ],
+    initApp,
+    function() {
+      document.getElementById('map').innerHTML =
+        '<div style="padding:40px;color:#c45c2a;font-family:monospace">Erro: Leaflet não pôde ser carregado. Verifique sua conexão e recarregue.</div>';
+    }
+  );
+})();
+
+function initApp() {
+// ── State ──────────────────────────────────────────────────────────────────
+let points = [];         // { id, name, lat, lng, marker }
+let routeLayer = null;
+let radiusCircle = null;
+let midpointMarker = null;
+let orderMode = 'optimized';
+let nextId = 1;
+
+// ── Location state ──────────────────────────────────────────────────────────
+let userLat = null, userLng = null;
+let userMarker = null;
+let userCircle = null;
+let watchId = null;
+
+// ── Map setup ──────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true }).setView([-23.55, -46.63], 5);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap contributors © CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// Start geolocation watch immediately
+startGeolocation();
+
+// Click on map to add point
+map.on('click', async (e) => {
+  const { lat, lng } = e.latlng;
+  const name = await reverseGeocode(lat, lng);
+  addPoint(name, lat, lng);
+});
+
+// ── Geocoding ──────────────────────────────────────────────────────────────
+async function searchAndAdd() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {
+      headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' }
+    });
+    const data = await res.json();
+    if (!data.length) { showError('Endereço não encontrado. Tente ser mais específico.'); return; }
+    const { display_name, lat, lon } = data[0];
+    const shortName = display_name.split(',').slice(0, 2).join(',').trim();
+    addPoint(shortName, parseFloat(lat), parseFloat(lon));
+    document.getElementById('searchInput').value = '';
+    hideError();
+  } catch (e) {
+    showError('Erro ao buscar endereço. Verifique sua conexão.');
+  }
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+      headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' }
+    });
+    const data = await res.json();
+    if (data.display_name) return data.display_name.split(',').slice(0, 2).join(',').trim();
+  } catch {}
+  return `Ponto (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+}
+
+// ── Geolocation ───────────────────────────────────────────────────────────
+function startGeolocation() {
+  if (!navigator.geolocation) {
+    setLocStatus('error', 'Geolocalização não disponível neste browser.');
+    return;
+  }
+  setLocStatus('searching', 'Buscando posição…');
+
+  // One-shot first, then watch for updates
+  navigator.geolocation.getCurrentPosition(onLocationFound, onLocationError, {
+    enableHighAccuracy: true, timeout: 12000, maximumAge: 30000
+  });
+  watchId = navigator.geolocation.watchPosition(onLocationFound, onLocationError, {
+    enableHighAccuracy: true, timeout: 15000, maximumAge: 10000
+  });
+}
+
+function onLocationFound(pos) {
+  userLat = pos.coords.latitude;
+  userLng = pos.coords.longitude;
+  const acc = Math.round(pos.coords.accuracy);
+
+  // Draw/update accuracy circle
+  if (userCircle) { map.removeLayer(userCircle); }
+  userCircle = L.circle([userLat, userLng], {
+    radius: pos.coords.accuracy,
+    color: '#2a7a5c', fillColor: '#2a7a5c',
+    fillOpacity: 0.06, weight: 1, dashArray: '4 3'
+  }).addTo(map);
+
+  // Draw/update position marker
+  if (userMarker) { map.removeLayer(userMarker); }
+  const locIcon = L.divIcon({
+    className: '',
+    html: '<div style="width:14px;height:14px;border-radius:50%;background:#2a7a5c;border:2.5px solid white;box-shadow:0 0 0 3px rgba(42,122,92,0.25)"></div>',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -10]
+  });
+  userMarker = L.marker([userLat, userLng], { icon: locIcon, zIndexOffset: 500 })
+    .addTo(map)
+    .bindPopup('<strong>Você está aqui</strong><br><small>Precisão: ±' + acc + ' m</small>');
+
+  setLocStatus('found', 'Posição encontrada (±' + acc + ' m)');
+  document.getElementById('btnLocate').classList.add('active');
+
+  // On first fix, center map here if no points yet
+  if (points.length === 0) {
+    map.setView([userLat, userLng], 13);
+  }
+}
+
+function onLocationError(err) {
+  const msgs = {
+    1: 'Permissão de localização negada.',
+    2: 'Posição indisponível.',
+    3: 'Tempo esgotado ao buscar posição.'
+  };
+  setLocStatus('error', msgs[err.code] || 'Erro de geolocalização.');
+  document.getElementById('btnLocate').classList.remove('active');
+}
+
+function setLocStatus(state, text) {
+  const el = document.getElementById('locStatus');
+  const dot = document.getElementById('locDot');
+  const txt = document.getElementById('locText');
+  el.classList.add('visible');
+  dot.className = 'loc-dot ' + state;
+  txt.textContent = text;
+}
+
+function centerOnUser() {
+  if (userLat !== null) {
+    map.setView([userLat, userLng], 14);
+    if (userMarker) userMarker.openPopup();
+  } else if (!navigator.geolocation) {
+    setLocStatus('error', 'Geolocalização não disponível.');
+  } else {
+    setLocStatus('searching', 'Buscando posição…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      onLocationFound(pos);
+      map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+    }, onLocationError, { enableHighAccuracy: true, timeout: 12000 });
+  }
+}
+
+// ── Points management ──────────────────────────────────────────────────────
+const LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function pointLabel(i) { return i < 26 ? LABELS[i] : LABELS[Math.floor(i/26)-1] + LABELS[i%26]; }
+
+function addPoint(name, lat, lng) {
+  const id = nextId++;
+  const label = pointLabel(points.length);
+  const marker = createLabelMarker(lat, lng, label, '#c45c2a')
+    .addTo(map)
+    .bindPopup(`<strong>${label}. ${name}</strong><br><small>${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`);
+
+  points.push({ id, name, lat, lng, marker, label });
+  renderList();
+  // Auto-open list when first point added
+  if (points.length === 1) {
+    listOpen = true;
+    document.getElementById('pointsList').style.display = 'flex';
+  }
+  updateMidpointAndRadius();
+  fitMapToPoints();
+  updateRouteButton();
+  updatePointsHeader();
+}
+
+function removePoint(id) {
+  const idx = points.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  map.removeLayer(points[idx].marker);
+  points.splice(idx, 1);
+  // Re-label all remaining markers
+  points.forEach((p, i) => {
+    const lbl = pointLabel(i);
+    p.label = lbl;
+    map.removeLayer(p.marker);
+    p.marker = createLabelMarker(p.lat, p.lng, lbl, '#c45c2a')
+      .addTo(map)
+      .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
+  });
+  clearRoute();
+  renderList();
+  updateMidpointAndRadius();
+  updateRouteButton();
+  updatePointsHeader();
+  document.getElementById('infoPanel').classList.remove('visible');
+}
+
+function renderList() {
+  const container = document.getElementById('pointsList');
+  const emptyHint = document.getElementById('emptyHint');
+
+  if (!points.length) {
+    container.innerHTML = '';
+    emptyHint.style.display = '';
+    document.getElementById('pointsSection').style.display = 'none';
+    return;
+  }
+
+  emptyHint.style.display = 'none';
+  document.getElementById('pointsSection').style.display = 'flex';
+
+  container.innerHTML = '';
+  points.forEach((p, i) => {
+    const lbl = pointLabel(i);
+    const item = document.createElement('div');
+    item.className = 'point-item';
+    item.draggable = orderMode === 'manual';
+    item.dataset.id = p.id;
+    item.innerHTML =
+      (orderMode === 'manual' ? '<span class="drag-handle" title="Arraste para reordenar">&#x2807;</span>' : '') +
+      '<div class="point-num">' + lbl + '</div>' +
+      '<div class="point-name" title="' + p.name.replace(/"/g,'&quot;') + '">' + p.name + '</div>' +
+      '<button class="btn-remove" data-id="' + p.id + '" title="Remover">×</button>';
+    item.querySelector('.point-name').addEventListener('click', () => {
+      map.setView([p.lat, p.lng], 15);
+      p.marker.openPopup();
+    });
+    item.querySelector('.btn-remove').addEventListener('click', () => removePoint(p.id));
+    container.appendChild(item);
+  });
+
+  if (orderMode === 'manual') setupDragDrop();
+}
+
+// ── Letter marker helper ──────────────────────────────────────────────────
+function createLabelMarker(lat, lng, label, color) {
+  const icon = L.divIcon({
+    className: '',
+    html: '<div style="width:26px;height:26px;border-radius:50%;background:' + color + ';color:white;font-family:monospace;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)">' + label + '</div>',
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -14]
+  });
+  return L.marker([lat, lng], { icon });
+}
+
+function updatePointsHeader() {
+  const n = points.length;
+  const lbl = document.getElementById('pointsToggleLabel');
+  if (lbl) lbl.textContent = (listOpen ? '▴' : '▾') + ` ${n} ponto${n !== 1 ? 's' : ''} adicionado${n !== 1 ? 's' : ''}`;
+}
+
+let listOpen = true;
+function togglePointsList() {
+  listOpen = !listOpen;
+  const list = document.getElementById('pointsList');
+  list.style.display = listOpen ? 'flex' : 'none';
+  updatePointsHeader();
+}
+
+// ── Drag & Drop reorder ────────────────────────────────────────────────────
+function setupDragDrop() {
+  const items = document.querySelectorAll('.point-item');
+  let dragSrc = null;
+
+  items.forEach(item => {
+    item.addEventListener('dragstart', (e) => { dragSrc = item; item.style.opacity = '0.4'; });
+    item.addEventListener('dragend', () => { item.style.opacity = '1'; });
+    item.addEventListener('dragover', (e) => { e.preventDefault(); });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (dragSrc === item) return;
+      const srcId = parseInt(dragSrc.dataset.id);
+      const dstId = parseInt(item.dataset.id);
+      const srcIdx = points.findIndex(p => p.id === srcId);
+      const dstIdx = points.findIndex(p => p.id === dstId);
+      const [moved] = points.splice(srcIdx, 1);
+      points.splice(dstIdx, 0, moved);
+      // Re-label all markers after reorder
+      points.forEach((p, i) => {
+        const lbl = pointLabel(i);
+        p.label = lbl;
+        map.removeLayer(p.marker);
+        p.marker = createLabelMarker(p.lat, p.lng, lbl, '#c45c2a')
+          .addTo(map)
+          .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
+      });
+      renderList();
+    });
+  });
+}
+
+// ── Midpoint & Radius ──────────────────────────────────────────────────────
+function getMidpoint() {
+  if (!points.length) return null;
+  const lat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+  const lng = points.reduce((s, p) => s + p.lng, 0) / points.length;
+  return { lat, lng };
+}
+
+function updateMidpointAndRadius() {
+  if (midpointMarker) { map.removeLayer(midpointMarker); midpointMarker = null; }
+  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+
+  const mid = getMidpoint();
+  if (!mid) return;
+
+  const radius = parseInt(document.getElementById('radiusSlider').value) * 1000;
+
+  const xIcon = L.divIcon({
+    className: '',
+    html: '<svg width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">' +
+          '<line x1="2" y1="2" x2="12" y2="12" stroke="#2a7a5c" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>' +
+          '<line x1="12" y1="2" x2="2" y2="12" stroke="#2a7a5c" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>' +
+          '</svg>',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+  midpointMarker = L.marker([mid.lat, mid.lng], { icon: xIcon, interactive: true, zIndexOffset: -100 })
+    .addTo(map)
+    .bindTooltip('Centro dos POIs', { permanent: false, direction: 'top' });
+
+  radiusCircle = L.circle([mid.lat, mid.lng], {
+    radius, color: '#2a7a5c', fillColor: '#2a7a5c', fillOpacity: 0.05, weight: 1.5, dashArray: '6 4'
+  }).addTo(map);
+
+  // Highlight out-of-radius points by replacing marker color
+  points.forEach((p, i) => {
+    const dist = map.distance([mid.lat, mid.lng], [p.lat, p.lng]);
+    const isOut = dist > radius;
+    const color = isOut ? '#aaa' : '#c45c2a';
+    const lbl = pointLabel(i);
+    map.removeLayer(p.marker);
+    p.marker = createLabelMarker(p.lat, p.lng, lbl, color)
+      .addTo(map)
+      .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
+    if (isOut) p.marker.getElement() && (p.marker.getElement().style.opacity = '0.55');
+  });
+}
+
+function updateRadius(val) {
+  const km = parseInt(val);
+  document.getElementById('radiusVal').textContent = km >= 1000 ? `${(km/1000).toFixed(1)} Mm` : km >= 1 ? `${km} km` : `${km*1000} m`;
+  updateMidpointAndRadius();
+}
+
+document.getElementById('radiusSlider').addEventListener('input', function() { updateRadius(this.value); });
+
+// ── Mode toggle ────────────────────────────────────────────────────────────
+function setMode(mode) {
+  orderMode = mode;
+  document.getElementById('btnOptimized').classList.toggle('active', mode === 'optimized');
+  document.getElementById('btnManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('modeHint').textContent = mode === 'optimized'
+    ? 'A ferramenta buscará a sequência de menor distância total.'
+    : 'Os pontos serão visitados na ordem da lista. Arraste para reordenar.';
+  renderList();
+  clearRoute();
+}
+
+// ── TSP (nearest neighbor heuristic) ──────────────────────────────────────
+function optimizeOrder(pts) {
+  if (pts.length <= 2) return [...pts];
+  const unvisited = [...pts];
+  const route = [unvisited.shift()];
+  while (unvisited.length) {
+    const last = route[route.length - 1];
+    let best = 0, bestDist = Infinity;
+    unvisited.forEach((p, i) => {
+      const d = haversine(last.lat, last.lng, p.lat, p.lng);
+      if (d < bestDist) { bestDist = d; best = i; }
+    });
+    route.push(unvisited.splice(best, 1)[0]);
+  }
+  return route;
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── Route calculation via OSRM ─────────────────────────────────────────────
+async function calculateRoute() {
+  if (points.length < 2) { showError('Adicione pelo menos 2 pontos.'); return; }
+  hideError();
+
+  const ordered = orderMode === 'optimized' ? optimizeOrder(points) : [...points];
+
+  setLoading(true);
+  clearRoute();
+
+  // Try OSRM first, fallback to straight-line if fetch fails
+  try {
+    await routeViaOSRM(ordered);
+  } catch(e) {
+    console.warn('OSRM failed:', e.message, '— using straight-line fallback');
+    routeStraightLine(ordered);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function routeViaOSRM(ordered) {
+  const coords = ordered.map(p => `${p.lng},${p.lat}`).join(';');
+  const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  let res;
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (data.code !== 'Ok') throw new Error('OSRM: ' + data.code);
+
+  const route = data.routes[0];
+  routeLayer = L.geoJSON(route.geometry, {
+    style: { color: '#c45c2a', weight: 4, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }
+  }).addTo(map);
+
+  map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+  // Re-label markers in route order
+  ordered.forEach((p, i) => {
+    const lbl = pointLabel(i);
+    map.removeLayer(p.marker);
+    p.marker = createLabelMarker(p.lat, p.lng, lbl, '#c45c2a')
+      .addTo(map)
+      .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
+  });
+  showInfo({ distance: route.distance, duration: route.duration, mode: 'road' }, ordered);
+}
+
+function routeStraightLine(ordered) {
+  // Fallback: draw straight lines between points, calculate haversine distances
+  const latlngs = ordered.map(p => [p.lat, p.lng]);
+  routeLayer = L.polyline(latlngs, {
+    color: '#c45c2a', weight: 3, opacity: 0.7,
+    dashArray: '8 5'  // dashed = approximate, not real roads
+  }).addTo(map);
+
+  map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+
+  // Estimate distance and duration (avg 50 km/h city)
+  let totalDist = 0;
+  for (let i = 0; i < ordered.length - 1; i++) {
+    totalDist += haversine(ordered[i].lat, ordered[i].lng, ordered[i+1].lat, ordered[i+1].lng);
+  }
+  const durationSec = (totalDist / 50) * 3600; // rough estimate
+
+  showInfo({ distance: totalDist * 1000, duration: durationSec, mode: 'straight' }, ordered);
+}
+
+function showInfo({ distance, duration, mode }, ordered) {
+  const dist = (distance / 1000).toFixed(1);
+  const dur = Math.round(duration / 60);
+  const h = Math.floor(dur / 60), m = dur % 60;
+  const durStr = h > 0 ? `${h}h ${m}min` : `${m} min`;
+  const modeNote = mode === 'straight'
+    ? `<br><span style="color:var(--muted);font-size:0.68rem">⚠ Linha reta (OSRM indisponível) — distância e tempo são estimativas</span>`
+    : '';
+
+  document.getElementById('infoSummary').innerHTML =
+    `<strong>Distância:</strong> ${dist} km &nbsp;·&nbsp; <strong>Tempo est.:</strong> ${durStr}<br>` +
+    `<strong>Pontos:</strong> ${ordered.length} &nbsp;·&nbsp; <strong>Modo:</strong> ${orderMode === 'optimized' ? 'Otimizado' : 'Manual'}` +
+    modeNote;
+
+  const steps = document.getElementById('stepsContainer');
+  steps.innerHTML = '<div class="steps-list">' +
+    ordered.map((p, i) =>
+      `<div class="step-item"><span class="step-arrow">${i === 0 ? '▶' : '→'}</span><span>${i+1}. ${p.name}</span></div>`
+    ).join('') +
+    '</div>';
+
+  document.getElementById('infoPanel').classList.add('visible');
+  hideError();
+  updateExportLinks(ordered);
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+let lastOrdered = [];
+let wazeStopsVisible = false;
+
+function buildGoogleMapsUrl(ordered) {
+  if (!ordered || !ordered.length) return null;
+  if (ordered.length === 1)
+    return `https://www.google.com/maps/search/?api=1&query=${ordered[0].lat},${ordered[0].lng}`;
+  const origin      = `${ordered[0].lat},${ordered[0].lng}`;
+  const destination = `${ordered[ordered.length-1].lat},${ordered[ordered.length-1].lng}`;
+  const waypoints   = ordered.slice(1,-1).map(p => `${p.lat},${p.lng}`).join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  return url;
+}
+
+function buildWazeUrl(lat, lng) {
+  // Waze deep-link: single destination
+  return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+}
+
+function buildGpx(ordered) {
+  const NL = '\n';
+  const xmlEsc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const pts = ordered.map((p, i) =>
+    '  <wpt lat="' + p.lat + '" lon="' + p.lng + '"><name>' + pointLabel(i) + '. ' + xmlEsc(p.name) + '</name></wpt>'
+  ).join(NL);
+
+  let trksegs = '';
+  if (routeLayer) {
+    const coords = [];
+    routeLayer.eachLayer(l => {
+      if (l.getLatLngs) {
+        const lls = l.getLatLngs();
+        (Array.isArray(lls[0]) ? lls.flat() : lls).forEach(ll => coords.push(ll));
+      }
+    });
+    if (coords.length) {
+      const trkpts = coords.map(ll => '  <trkpt lat="' + ll.lat + '" lon="' + ll.lng + '"></trkpt>').join(NL);
+      trksegs = NL + '<trk><name>Detavan Route</name><trkseg>' + NL + trkpts + NL + '</trkseg></trk>';
+    }
+  }
+
+  return '<?xml version="1.0" encoding="UTF-8"?>' + NL +
+    '<gpx version="1.1" creator="Detavan" xmlns="http://www.topografix.com/GPX/1/1">' + NL +
+    pts + trksegs + NL + '</gpx>';
+}
+
+function downloadGpx() {
+  if (!lastOrdered.length) return;
+  const gpx = buildGpx(lastOrdered);
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'detavan_rota.gpx'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateExportLinks(ordered) {
+  lastOrdered = ordered;
+
+  // Google Maps — full route
+  const gmUrl = buildGoogleMapsUrl(ordered);
+  document.getElementById('btnGmaps').href = gmUrl || '#';
+
+  // Waze — first stop by default (user taps through each stop)
+  const wazeFirst = ordered[0];
+  document.getElementById('btnWaze').href = buildWazeUrl(wazeFirst.lat, wazeFirst.lng);
+
+  // Waze multi-stop breakdown
+  const wazeWrap = document.getElementById('wazeStopsWrap');
+  const wazeList = document.getElementById('wazeStops');
+  if (ordered.length > 1) {
+    wazeWrap.style.display = 'block';
+    wazeStopsVisible = false;
+    document.getElementById('wazeStops').classList.remove('visible');
+    document.getElementById('wazeToggle').textContent = '▾ Paradas individuais no Waze';
+    wazeList.innerHTML = ordered.map((p, i) =>
+      '<div class="waze-stop-item">' +
+      '<div class="waze-stop-lbl">' + pointLabel(i) + '</div>' +
+      '<div class="waze-stop-name" title="' + p.name.replace(/"/g,'&quot;') + '">' + p.name + '</div>' +
+      '<a class="waze-stop-link" href="' + buildWazeUrl(p.lat, p.lng) + '" target="_blank" rel="noopener">Abrir ↗</a>' +
+      '</div>'
+    ).join('');
+  } else {
+    wazeWrap.style.display = 'none';
+  }
+
+  // Note
+  let note = '';
+  if (ordered.length >= 2) {
+    note = `Google Maps abre com ${ordered.length === 2 ? 'origem e destino' : 'todos os ' + ordered.length + ' pontos'}. `;
+    note += ordered.length > 2
+      ? `Waze não suporta múltiplas paradas via link — use as paradas individuais abaixo para navegar ponto a ponto.`
+      : `Waze abrirá a navegação direto.`;
+  }
+  document.getElementById('exportNote').textContent = note;
+  document.getElementById('exportPanel').classList.add('visible');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function clearRoute() {
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  document.getElementById('exportPanel').classList.remove('visible');
+  document.getElementById('infoPanel').classList.remove('visible');
+}
+
+function fitMapToPoints() {
+  if (!points.length) return;
+  if (points.length === 1) { map.setView([points[0].lat, points[0].lng], 14); return; }
+  const lats = points.map(p => p.lat), lngs = points.map(p => p.lng);
+  map.fitBounds([[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]], { padding: [40, 40] });
+}
+
+function updateRouteButton() {
+  document.getElementById('btnRoute').disabled = points.length < 2;
+}
+
+function setLoading(v) {
+  document.getElementById('loadingMsg').classList.toggle('visible', v);
+  document.getElementById('btnRoute').disabled = v;
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+// Wire all event listeners (avoids inline onclick scope issues)
+// Mobile sheet toggle
+(function() {
+  var sidebar = document.querySelector('.sidebar');
+  var btn = document.getElementById('btnSheet');
+  var isOpen = false;
+
+  function setSheet(open) {
+    isOpen = open;
+    sidebar.classList.toggle('sheet-open', open);
+    // Update FAB icon: list icon when closed, chevron-down when open
+    btn.innerHTML = open
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>';
+    btn.title = open ? 'Fechar painel' : 'Abrir painel';
+  }
+
+  btn.addEventListener('click', function() { setSheet(!isOpen); });
+
+  // Also toggle when tapping the drag handle (::before pseudo — use touchstart on sidebar top area)
+  sidebar.addEventListener('click', function(e) {
+    // Only if click is within the top 36px (handle area)
+    var rect = sidebar.getBoundingClientRect();
+    if (e.clientY - rect.top < 36) setSheet(!isOpen);
+  });
+})();
+
+document.getElementById('btnLocate').addEventListener('click', centerOnUser);
+document.getElementById('btnAdd').addEventListener('click', searchAndAdd);
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchAndAdd();
+});
+document.getElementById('radiusSlider').addEventListener('input', function() {
+  updateRadius(this.value);
+});
+document.getElementById('btnOptimized').addEventListener('click', () => setMode('optimized'));
+document.getElementById('btnManual').addEventListener('click', () => setMode('manual'));
+document.getElementById('btnRoute').addEventListener('click', calculateRoute);
+document.getElementById('btnCopyLink').addEventListener('click', () => {
+  const url = buildGoogleMapsUrl(lastOrdered);
+  if (!url) return;
+  const btn = document.getElementById('btnCopyLink');
+  const doCopy = () => { btn.classList.add('copied'); btn.textContent = '✓'; setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘'; }, 2000); };
+  navigator.clipboard ? navigator.clipboard.writeText(url).then(doCopy).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = url;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); doCopy();
+  }) : (() => {
+    const ta = document.createElement('textarea'); ta.value = url;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); doCopy();
+  })();
+});
+
+document.getElementById('btnGpx').addEventListener('click', downloadGpx);
+
+document.getElementById('wazeToggle').addEventListener('click', () => {
+  wazeStopsVisible = !wazeStopsVisible;
+  document.getElementById('wazeStops').classList.toggle('visible', wazeStopsVisible);
+  document.getElementById('wazeToggle').textContent =
+    (wazeStopsVisible ? '▴' : '▾') + ' Paradas individuais no Waze';
+});
+
+// Set today's date as default
+document.getElementById('dateInput').valueAsDate = new Date();
+} // end initApp
+</script>
+</body>
+</html>
