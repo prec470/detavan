@@ -228,6 +228,7 @@
   }
   .btn-remove:hover { color: #c0392b; }
 
+
   /* Controls */
   .control-group {
     display: flex;
@@ -408,6 +409,14 @@
     width: 100%;
     height: 100%;
   }
+  /* pointer finger cursor on map — invites clicking to add points */
+  .leaflet-container {
+    cursor: pointer !important;
+  }
+  /* Leaflet resets cursor during pan — keep pointer when not dragging */
+  .leaflet-grab { cursor: pointer !important; }
+  .leaflet-dragging .leaflet-grab,
+  .leaflet-dragging .leaflet-container { cursor: grabbing !important; }
   .btn-locate {
     position: absolute;
     bottom: 24px;
@@ -724,6 +733,42 @@
     /* Time fields stack */
     .time-row { flex-direction: column; }
   }
+
+  /* Toggle switch */
+  .time-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .switch-wrap input { display: none; }
+  .switch-track {
+    width: 34px;
+    height: 18px;
+    background: var(--border);
+    border-radius: 9px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .switch-wrap input:checked + .switch-track { background: var(--accent2); }
+  .switch-thumb {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: left 0.2s;
+  }
+  .switch-wrap input:checked + .switch-track .switch-thumb { left: 18px; }
+  .switch-lbl { font-size: 0.68rem; color: var(--muted); min-width: 56px; }
 </style>
 </head>
 <body>
@@ -740,9 +785,10 @@
       <!-- ADD POINT -->
       <div>
         <div class="section-label">Pontos de interesse</div>
-        <div class="search-row">
-          <input type="text" id="searchInput" placeholder="Buscar endereço ou lugar…" />
-          <button class="btn-add" id="btnAdd">+ Adicionar</button>
+        <div class="search-row" style="position:relative">
+          <input type="text" id="searchInput" placeholder="Buscar endereço ou lugar…" autocomplete="off"/>
+          <button class="btn-add" id="btnAdd">+</button>
+          <div id="searchDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:2000;background:white;border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.1)"></div>
         </div>
         <div class="hint">Ou clique diretamente no mapa para adicionar.</div>
       </div>
@@ -765,18 +811,6 @@
 
       <div class="divider"></div>
 
-      <!-- RADIUS -->
-      <div class="control-group">
-        <div class="section-label">Raio de consideração</div>
-        <div class="range-row">
-          <input type="range" id="radiusSlider" min="1" max="500" value="50" step="1">
-          <span class="range-val" id="radiusVal">50 km</span>
-        </div>
-        <div class="hint">Centro: ponto médio entre os POIs. Pontos fora do raio são destacados.</div>
-      </div>
-
-      <div class="divider"></div>
-
       <!-- ORDER MODE -->
       <div class="control-group">
         <div class="section-label">Ordem dos pontos</div>
@@ -791,18 +825,47 @@
 
       <!-- TIME -->
       <div class="control-group">
-        <div class="section-label">Horário (opcional)</div>
-        <div class="time-row">
-          <div class="time-field">
-            <label>Data</label>
-            <input type="date" id="dateInput">
-          </div>
-          <div class="time-field">
-            <label>Partida</label>
-            <input type="time" id="departureTime" value="09:00">
-          </div>
+        <div class="time-header">
+          <div class="section-label" style="margin-bottom:0">Horário</div>
+          <label class="switch-wrap" title="Ativar restrição de horário">
+            <input type="checkbox" id="timeEnabled">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-lbl" id="switchLbl">desativado</span>
+          </label>
         </div>
-        <div class="hint">Usado para estimativa de tempo. Dados de tráfego em desenvolvimento.</div>
+        <div id="timeControls" style="display:none;margin-top:10px">
+          <div class="toggle-group" style="margin-bottom:8px">
+            <button class="toggle-btn active" id="btnDeparture">Partida</button>
+            <button class="toggle-btn" id="btnArrival">Chegada</button>
+          </div>
+          <div class="time-row">
+            <div class="time-field">
+              <label>Data</label>
+              <input type="date" id="dateInput">
+            </div>
+            <div class="time-field">
+              <label id="timePinLabel">Hora de partida</label>
+              <input type="time" id="departureTime" value="09:00">
+            </div>
+          </div>
+          <div class="hint">Usado para estimativa de tempo. Dados de tráfego em desenvolvimento.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- RADIUS (collapsed) -->
+      <div class="control-group">
+        <button id="radiusToggleBtn" style="background:none;border:none;padding:0;font-family:inherit;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;text-align:left;width:100%;display:flex;justify-content:space-between;align-items:center">
+          <span>Raio de atuação</span><span id="radiusToggleArrow">▾</span>
+        </button>
+        <div id="radiusContent" style="display:none;margin-top:6px">
+          <div class="range-row">
+            <input type="range" id="radiusSlider" min="1" max="500" value="50" step="1">
+            <span class="range-val" id="radiusVal">50 km</span>
+          </div>
+          <div class="hint">Centro: ponto médio entre os POIs. Pontos fora do raio são destacados.</div>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -949,23 +1012,82 @@ map.on('click', async (e) => {
 });
 
 // ── Geocoding ──────────────────────────────────────────────────────────────
+let suggestTimer = null;
+
+async function searchSuggest(q) {
+  const dd = document.getElementById('searchDropdown');
+  if (!q || q.length < 3) { dd.style.display = 'none'; return; }
+  try {
+    // Build location bias: use current GPS if available, else map center
+    const refLat = userLat !== null ? userLat : map.getCenter().lat;
+    const refLng = userLng !== null ? userLng : map.getCenter().lng;
+    const delta = 1.5; // ~150km bounding box for viewbox bias
+    const viewbox = (refLng-delta) + ',' + (refLat+delta) + ',' + (refLng+delta) + ',' + (refLat-delta);
+    const res = await fetch(
+      'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
+      '&format=json&limit=8&addressdetails=1' +
+      '&viewbox=' + viewbox + '&bounded=0',
+      { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } }
+    );
+    const raw = await res.json();
+    if (!raw.length) { dd.style.display = 'none'; return; }
+    // Sort: results near refLat/refLng come first
+    const sorted = raw.slice().sort(function(a, b) {
+      const da = Math.abs(parseFloat(a.lat)-refLat) + Math.abs(parseFloat(a.lon)-refLng);
+      const db = Math.abs(parseFloat(b.lat)-refLat) + Math.abs(parseFloat(b.lon)-refLng);
+      return da - db;
+    });
+    const data = sorted.slice(0, 6);
+    dd._data = data;
+    dd.innerHTML = data.map(function(item, i) {
+      const parts = item.display_name.split(',');
+      const main = parts.slice(0, 2).join(',').trim();
+      const sub  = parts.slice(2, 4).join(',').trim();
+      return '<div data-i="' + i + '" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border)">' +
+        '<div style="font-size:0.75rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + main + '</div>' +
+        (sub ? '<div style="font-size:0.65rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sub + '</div>' : '') +
+        '</div>';
+    }).join('');
+    dd.style.display = 'block';
+    dd.querySelectorAll('div[data-i]').forEach(function(el) {
+      el.addEventListener('mouseenter', function() { el.style.background = 'var(--paper2)'; });
+      el.addEventListener('mouseleave', function() { el.style.background = 'white'; });
+      el.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        var item = dd._data[parseInt(el.dataset.i)];
+        var short = item.display_name.split(',').slice(0, 2).join(',').trim();
+        addPoint(short, parseFloat(item.lat), parseFloat(item.lon));
+        document.getElementById('searchInput').value = '';
+        dd.style.display = 'none';
+        hideError();
+      });
+    });
+  } catch(e) { dd.style.display = 'none'; }
+}
+
 async function searchAndAdd() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
+  const dd = document.getElementById('searchDropdown');
+  if (dd.style.display !== 'none' && dd._data && dd._data.length) {
+    const item = dd._data[0];
+    addPoint(item.display_name.split(',').slice(0, 2).join(',').trim(), parseFloat(item.lat), parseFloat(item.lon));
+    document.getElementById('searchInput').value = '';
+    dd.style.display = 'none';
+    return;
+  }
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, {
-      headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' }
-    });
+    const res = await fetch(
+      'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1',
+      { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } }
+    );
     const data = await res.json();
     if (!data.length) { showError('Endereço não encontrado. Tente ser mais específico.'); return; }
-    const { display_name, lat, lon } = data[0];
-    const shortName = display_name.split(',').slice(0, 2).join(',').trim();
-    addPoint(shortName, parseFloat(lat), parseFloat(lon));
+    const item = data[0];
+    addPoint(item.display_name.split(',').slice(0, 2).join(',').trim(), parseFloat(item.lat), parseFloat(item.lon));
     document.getElementById('searchInput').value = '';
     hideError();
-  } catch (e) {
-    showError('Erro ao buscar endereço. Verifique sua conexão.');
-  }
+  } catch(e) { showError('Erro ao buscar endereço. Verifique sua conexão.'); }
 }
 
 async function reverseGeocode(lat, lng) {
@@ -1068,15 +1190,22 @@ function centerOnUser() {
 // ── Points management ──────────────────────────────────────────────────────
 const LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 function pointLabel(i) { return i < 26 ? LABELS[i] : LABELS[Math.floor(i/26)-1] + LABELS[i%26]; }
+function pointColor(i, total) {
+  if (i === 0) return '#2a7a5c';           // origin  — green
+  if (i === total - 1) return '#1a1a18';   // destination — dark
+  return '#c45c2a';                         // waypoint — orange
+}
 
 function addPoint(name, lat, lng) {
   const id = nextId++;
   const label = pointLabel(points.length);
-  const marker = createLabelMarker(lat, lng, label, '#c45c2a')
+  const color = pointColor(points.length, points.length + 1); // new point is last for now
+  const marker = createLabelMarker(lat, lng, label, color)
     .addTo(map)
-    .bindPopup(`<strong>${label}. ${name}</strong><br><small>${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`);
+    .bindPopup('<strong>' + label + '. ' + name + '</strong><br><small>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</small>');
 
   points.push({ id, name, lat, lng, marker, label });
+  relabelAllMarkers(); // repaint colors (previous last is no longer last)
   renderList();
   // Auto-open list when first point added
   if (points.length === 1) {
@@ -1094,15 +1223,7 @@ function removePoint(id) {
   if (idx === -1) return;
   map.removeLayer(points[idx].marker);
   points.splice(idx, 1);
-  // Re-label all remaining markers
-  points.forEach((p, i) => {
-    const lbl = pointLabel(i);
-    p.label = lbl;
-    map.removeLayer(p.marker);
-    p.marker = createLabelMarker(p.lat, p.lng, lbl, '#c45c2a')
-      .addTo(map)
-      .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
-  });
+  relabelAllMarkers();
   clearRoute();
   renderList();
   updateMidpointAndRadius();
@@ -1128,20 +1249,25 @@ function renderList() {
   container.innerHTML = '';
   points.forEach((p, i) => {
     const lbl = pointLabel(i);
+    const isManual = orderMode === 'manual';
     const item = document.createElement('div');
     item.className = 'point-item';
-    item.draggable = orderMode === 'manual';
+    item.draggable = isManual;
     item.dataset.id = p.id;
+    item.dataset.idx = i;
+
     item.innerHTML =
-      (orderMode === 'manual' ? '<span class="drag-handle" title="Arraste para reordenar">&#x2807;</span>' : '') +
-      '<div class="point-num">' + lbl + '</div>' +
+      (isManual ? '<span class="drag-handle" title="Arraste para reordenar">&#x2807;</span>' : '') +
+      '<div class="point-num" style="background:' + pointColor(i, points.length) + '">' + lbl + '</div>' +
       '<div class="point-name" title="' + p.name.replace(/"/g,'&quot;') + '">' + p.name + '</div>' +
       '<button class="btn-remove" data-id="' + p.id + '" title="Remover">×</button>';
+
     item.querySelector('.point-name').addEventListener('click', () => {
       map.setView([p.lat, p.lng], 15);
       p.marker.openPopup();
     });
     item.querySelector('.btn-remove').addEventListener('click', () => removePoint(p.id));
+
     container.appendChild(item);
   });
 
@@ -1149,6 +1275,18 @@ function renderList() {
 }
 
 // ── Letter marker helper ──────────────────────────────────────────────────
+function relabelAllMarkers() {
+  points.forEach((p, i) => {
+    const lbl = pointLabel(i);
+    const color = pointColor(i, points.length);
+    p.label = lbl;
+    map.removeLayer(p.marker);
+    p.marker = createLabelMarker(p.lat, p.lng, lbl, color)
+      .addTo(map)
+      .bindPopup('<strong>' + lbl + '. ' + p.name + '</strong><br><small>' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + '</small>');
+  });
+}
+
 function createLabelMarker(lat, lng, label, color) {
   const icon = L.divIcon({
     className: '',
@@ -1174,34 +1312,61 @@ function togglePointsList() {
   updatePointsHeader();
 }
 
+// ── Move point by arrow ───────────────────────────────────────────────────
+function movePoint(id, dir) {
+  const idx = points.findIndex(p => p.id === id);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= points.length) return;
+  const [moved] = points.splice(idx, 1);
+  points.splice(newIdx, 0, moved);
+  relabelAllMarkers();
+  renderList();
+  clearRoute();
+  // keep list open after reorder
+  document.getElementById('pointsList').style.display = 'flex';
+  listOpen = true;
+  updatePointsHeader();
+}
+
 // ── Drag & Drop reorder ────────────────────────────────────────────────────
 function setupDragDrop() {
-  const items = document.querySelectorAll('.point-item');
+  const container = document.getElementById('pointsList');
+  const items = Array.from(container.querySelectorAll('.point-item'));
   let dragSrc = null;
 
   items.forEach(item => {
-    item.addEventListener('dragstart', (e) => { dragSrc = item; item.style.opacity = '0.4'; });
-    item.addEventListener('dragend', () => { item.style.opacity = '1'; });
-    item.addEventListener('dragover', (e) => { e.preventDefault(); });
+    item.addEventListener('dragstart', (e) => {
+      dragSrc = item;
+      item.style.opacity = '0.35';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.style.opacity = '1';
+      container.querySelectorAll('.point-item').forEach(i => i.style.borderTop = '');
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      container.querySelectorAll('.point-item').forEach(i => i.style.borderTop = '');
+      item.style.borderTop = '2px solid var(--accent)';
+    });
+    item.addEventListener('dragleave', () => { item.style.borderTop = ''; });
     item.addEventListener('drop', (e) => {
       e.preventDefault();
-      if (dragSrc === item) return;
+      item.style.borderTop = '';
+      if (!dragSrc || dragSrc === item) return;
       const srcId = parseInt(dragSrc.dataset.id);
       const dstId = parseInt(item.dataset.id);
       const srcIdx = points.findIndex(p => p.id === srcId);
       const dstIdx = points.findIndex(p => p.id === dstId);
       const [moved] = points.splice(srcIdx, 1);
       points.splice(dstIdx, 0, moved);
-      // Re-label all markers after reorder
-      points.forEach((p, i) => {
-        const lbl = pointLabel(i);
-        p.label = lbl;
-        map.removeLayer(p.marker);
-        p.marker = createLabelMarker(p.lat, p.lng, lbl, '#c45c2a')
-          .addTo(map)
-          .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
-      });
+      relabelAllMarkers();
       renderList();
+      clearRoute();
+      document.getElementById('pointsList').style.display = 'flex';
+      listOpen = true;
+      updatePointsHeader();
     });
   });
 }
@@ -1244,13 +1409,13 @@ function updateMidpointAndRadius() {
   points.forEach((p, i) => {
     const dist = map.distance([mid.lat, mid.lng], [p.lat, p.lng]);
     const isOut = dist > radius;
-    const color = isOut ? '#aaa' : '#c45c2a';
+    const color = isOut ? '#aaa' : pointColor(i, points.length);
     const lbl = pointLabel(i);
     map.removeLayer(p.marker);
     p.marker = createLabelMarker(p.lat, p.lng, lbl, color)
       .addTo(map)
-      .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
-    if (isOut) p.marker.getElement() && (p.marker.getElement().style.opacity = '0.55');
+      .bindPopup('<strong>' + lbl + '. ' + p.name + '</strong><br><small>' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + '</small>');
+    if (isOut) { var el = p.marker.getElement(); if (el) el.style.opacity = '0.55'; }
   });
 }
 
@@ -1277,8 +1442,10 @@ function setMode(mode) {
 // ── TSP (nearest neighbor heuristic) ──────────────────────────────────────
 function optimizeOrder(pts) {
   if (pts.length <= 2) return [...pts];
-  const unvisited = [...pts];
-  const route = [unvisited.shift()];
+  const origin = pts[0];
+  const dest   = pts[pts.length - 1];
+  let unvisited = pts.slice(1, -1); // only intermediaries are reordered
+  const route = [origin];
   while (unvisited.length) {
     const last = route[route.length - 1];
     let best = 0, bestDist = Infinity;
@@ -1288,6 +1455,7 @@ function optimizeOrder(pts) {
     });
     route.push(unvisited.splice(best, 1)[0]);
   }
+  route.push(dest);
   return route;
 }
 
@@ -1309,48 +1477,147 @@ async function calculateRoute() {
 
   // Try OSRM first, fallback to straight-line if fetch fails
   try {
-    await routeViaOSRM(ordered);
+    await drawRoute(ordered);
   } catch(e) {
-    console.warn('OSRM failed:', e.message, '— using straight-line fallback');
+    console.warn('All routing providers failed:', e.message, '— straight-line fallback');
     routeStraightLine(ordered);
   } finally {
     setLoading(false);
   }
 }
 
+async function fetchWithTimeout(url, opts, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, Object.assign({}, opts, { signal: ctrl.signal })); }
+  finally { clearTimeout(t); }
+}
+
 async function routeViaOSRM(ordered) {
-  const coords = ordered.map(p => `${p.lng},${p.lat}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  let res;
-  try {
-    res = await fetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-
+  const coords = ordered.map(p => p.lng + ',' + p.lat).join(';');
+  // Try OSRM public demo
+  const url = 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson&steps=false';
+  const res = await fetchWithTimeout(url, {}, 8000);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const data = await res.json();
   if (data.code !== 'Ok') throw new Error('OSRM: ' + data.code);
+  return { geojson: data.routes[0].geometry, distance: data.routes[0].distance, duration: data.routes[0].duration };
+}
 
-  const route = data.routes[0];
-  routeLayer = L.geoJSON(route.geometry, {
+async function routeViaOpenRouteService(ordered) {
+  // ORS — free public API, no key needed for basic use
+  const coords = ordered.map(p => '[' + p.lng + ',' + p.lat + ']').join(',');
+  const url = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
+  const res = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': '5b3ce3597851110001cf6248a46e27b8bce04f4ca0fb78e84f5f5a0a' },
+    body: '{"coordinates":[' + coords + ']}'
+  }, 10000);
+  if (!res.ok) throw new Error('ORS HTTP ' + res.status);
+  const data = await res.json();
+  if (!data.features || !data.features[0]) throw new Error('ORS: no route');
+  const feat = data.features[0];
+  return {
+    geojson: feat.geometry,
+    distance: feat.properties.summary.distance,
+    duration: feat.properties.summary.duration
+  };
+}
+
+async function routeViaOSRMEU(ordered) {
+  // OSRM EU mirror
+  const coords = ordered.map(p => p.lng + ',' + p.lat).join(';');
+  const url = 'https://routing.openstreetmap.de/routed-car/route/v1/driving/' + coords + '?overview=full&geometries=geojson&steps=false';
+  const res = await fetchWithTimeout(url, {}, 8000);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (data.code !== 'Ok') throw new Error('OSRM-EU: ' + data.code);
+  return { geojson: data.routes[0].geometry, distance: data.routes[0].distance, duration: data.routes[0].duration };
+}
+
+async function routeViaValhalla(ordered) {
+  // Valhalla via Stadia Maps — no API key required, open CORS
+  const locations = ordered.map(p => '{"lon":' + p.lng + ',"lat":' + p.lat + ',"type":"break"}').join(',');
+  const body = '{"locations":[' + locations + '],"costing":"auto","directions_options":{"units":"kilometers"}}';
+  const res = await fetchWithTimeout('https://valhalla1.openstreetmap.de/route', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body
+  }, 10000);
+  if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
+  const data = await res.json();
+  if (!data.trip) throw new Error('Valhalla: no trip');
+  // Decode each leg separately and concatenate (joining shapes as strings causes artifacts)
+  const coords = [];
+  data.trip.legs.forEach(function(leg, li) {
+    const legCoords = decodePolyline(leg.shape, 6);
+    // Skip first point of subsequent legs — it duplicates last point of previous leg
+    const start = li === 0 ? 0 : 1;
+    for (let i = start; i < legCoords.length; i++) coords.push(legCoords[i]);
+  });
+  return {
+    geojson: { type: 'LineString', coordinates: coords },
+    distance: data.trip.summary.length * 1000,
+    duration: data.trip.summary.time
+  };
+}
+
+function decodePolyline(encoded, precision) {
+  // Standard polyline decoder (supports precision 5 and 6)
+  const factor = Math.pow(10, precision || 5);
+  const result = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let b, shift = 0, res2 = 0;
+    do { b = encoded.charCodeAt(index++) - 63; res2 |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (res2 & 1) ? ~(res2 >> 1) : (res2 >> 1);
+    shift = 0; res2 = 0;
+    do { b = encoded.charCodeAt(index++) - 63; res2 |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (res2 & 1) ? ~(res2 >> 1) : (res2 >> 1);
+    result.push([lng / factor, lat / factor]);
+  }
+  return result;
+}
+
+async function routeViaAPI(ordered) {
+  // Try providers in order, first success wins
+  const providers = [
+    { name: 'Valhalla', fn: () => routeViaValhalla(ordered) },
+    { name: 'OSRM', fn: () => routeViaOSRM(ordered) },
+    { name: 'ORS',  fn: () => routeViaOpenRouteService(ordered) },
+    { name: 'OSRM-EU', fn: () => routeViaOSRMEU(ordered) }
+  ];
+  let lastErr;
+  for (const p of providers) {
+    try {
+      console.log('Trying', p.name, '...');
+      const result = await p.fn();
+      console.log('Route via', p.name, 'OK');
+      return result;
+    } catch(e) {
+      console.warn(p.name, 'failed:', e.message);
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+async function drawRoute(ordered) {
+  const result = await routeViaAPI(ordered);
+
+  routeLayer = L.geoJSON(result.geojson, {
     style: { color: '#c45c2a', weight: 4, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }
   }).addTo(map);
 
   map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
-  // Re-label markers in route order
   ordered.forEach((p, i) => {
     const lbl = pointLabel(i);
     map.removeLayer(p.marker);
-    p.marker = createLabelMarker(p.lat, p.lng, lbl, '#c45c2a')
+    p.marker = createLabelMarker(p.lat, p.lng, lbl, pointColor(i, ordered.length))
       .addTo(map)
-      .bindPopup(`<strong>${lbl}. ${p.name}</strong><br><small>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</small>`);
+      .bindPopup('<strong>' + lbl + '. ' + p.name + '</strong><br><small>' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + '</small>');
   });
-  showInfo({ distance: route.distance, duration: route.duration, mode: 'road' }, ordered);
+  showInfo({ distance: result.distance, duration: result.duration, mode: 'road' }, ordered);
 }
 
 function routeStraightLine(ordered) {
@@ -1403,15 +1670,35 @@ function showInfo({ distance, duration, mode }, ordered) {
 let lastOrdered = [];
 let wazeStopsVisible = false;
 
+function getTimeConstraint() {
+  // Returns {mode, date, time, label} if time is enabled, else null
+  const el = document.getElementById('timeEnabled');
+  if (!el || !el.checked) return null;
+  const dateVal = document.getElementById('dateInput').value;
+  const timeVal = document.getElementById('departureTime').value;
+  if (!dateVal || !timeVal) return null;
+  return {
+    mode: timeMode, // 'departure' | 'arrival'
+    date: dateVal,
+    time: timeVal,
+    label: (timeMode === 'departure' ? 'Partida' : 'Chegada') + ': ' + dateVal + ' ' + timeVal
+  };
+}
+
 function buildGoogleMapsUrl(ordered) {
   if (!ordered || !ordered.length) return null;
   if (ordered.length === 1)
-    return `https://www.google.com/maps/search/?api=1&query=${ordered[0].lat},${ordered[0].lng}`;
-  const origin      = `${ordered[0].lat},${ordered[0].lng}`;
-  const destination = `${ordered[ordered.length-1].lat},${ordered[ordered.length-1].lng}`;
-  const waypoints   = ordered.slice(1,-1).map(p => `${p.lat},${p.lng}`).join('|');
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-  if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+    return 'https://www.google.com/maps/search/?api=1&query=' + ordered[0].lat + ',' + ordered[0].lng;
+  const origin      = ordered[0].lat + ',' + ordered[0].lng;
+  const destination = ordered[ordered.length-1].lat + ',' + ordered[ordered.length-1].lng;
+  const waypoints   = ordered.slice(1,-1).map(p => p.lat + ',' + p.lng).join('|');
+  let url = 'https://www.google.com/maps/dir/?api=1' +
+    '&origin=' + encodeURIComponent(origin) +
+    '&destination=' + encodeURIComponent(destination) +
+    '&travelmode=driving';
+  if (waypoints) url += '&waypoints=' + encodeURIComponent(waypoints);
+  // Note: Google Maps deep links (dir/) don't support departure_time.
+  // The time constraint is shown in the export panel as a reminder to the user.
   return url;
 }
 
@@ -1487,15 +1774,26 @@ function updateExportLinks(ordered) {
     wazeWrap.style.display = 'none';
   }
 
-  // Note
+  // Build export note including time constraint
+  const tc = getTimeConstraint();
   let note = '';
   if (ordered.length >= 2) {
-    note = `Google Maps abre com ${ordered.length === 2 ? 'origem e destino' : 'todos os ' + ordered.length + ' pontos'}. `;
+    const nPts = ordered.length === 2 ? 'origem e destino' : 'todos os ' + ordered.length + ' pontos';
+    note = 'Google Maps abre com ' + nPts + '. ';
     note += ordered.length > 2
-      ? `Waze não suporta múltiplas paradas via link — use as paradas individuais abaixo para navegar ponto a ponto.`
-      : `Waze abrirá a navegação direto.`;
+      ? 'Waze: use as paradas individuais abaixo para navegar ponto a ponto.'
+      : 'Waze abrirá a navegação direto.';
   }
-  document.getElementById('exportNote').textContent = note;
+  // Time constraint notice
+  const noteEl = document.getElementById('exportNote');
+  noteEl.innerHTML = note ? note + (tc ? '<br><br>' : '') : '';
+  if (tc) {
+    noteEl.innerHTML += '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--paper);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:0.68rem">' +
+      '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>' +
+      '<strong>' + (tc.mode === 'departure' ? 'Partida' : 'Chegada') + ':</strong>&nbsp;' + tc.date + ' às ' + tc.time +
+      '</span>' +
+      '<br><span style="font-size:0.64rem;color:var(--muted)">Google Maps e Waze não aceitam horário via link — ajuste manualmente após abrir o app.</span>';
+  }
   document.getElementById('exportPanel').classList.add('visible');
 }
 
@@ -1561,11 +1859,30 @@ function hideError() {
 
 document.getElementById('btnLocate').addEventListener('click', centerOnUser);
 document.getElementById('btnAdd').addEventListener('click', searchAndAdd);
-document.getElementById('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') searchAndAdd();
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); searchAndAdd(); }
+  if (e.key === 'Escape') { document.getElementById('searchDropdown').style.display = 'none'; }
+  if (e.key === 'ArrowDown') {
+    var first = document.querySelector('#searchDropdown div[data-i]');
+    if (first) { first.style.background = 'var(--paper2)'; first.focus && first.focus(); }
+  }
+});
+document.getElementById('searchInput').addEventListener('input', function() {
+  clearTimeout(suggestTimer);
+  suggestTimer = setTimeout(function() { searchSuggest(document.getElementById('searchInput').value.trim()); }, 280);
+});
+document.getElementById('searchInput').addEventListener('blur', function() {
+  setTimeout(function() { document.getElementById('searchDropdown').style.display = 'none'; }, 160);
 });
 document.getElementById('radiusSlider').addEventListener('input', function() {
   updateRadius(this.value);
+});
+document.getElementById('radiusToggleBtn').addEventListener('click', function() {
+  var content = document.getElementById('radiusContent');
+  var arrow = document.getElementById('radiusToggleArrow');
+  var open = content.style.display === 'none';
+  content.style.display = open ? 'block' : 'none';
+  arrow.textContent = open ? '▴' : '▾';
 });
 document.getElementById('btnOptimized').addEventListener('click', () => setMode('optimized'));
 document.getElementById('btnManual').addEventListener('click', () => setMode('manual'));
@@ -1597,6 +1914,26 @@ document.getElementById('wazeToggle').addEventListener('click', () => {
 
 // Set today's date as default
 document.getElementById('dateInput').valueAsDate = new Date();
+
+// Time toggle switch
+let timeMode = 'departure';
+document.getElementById('timeEnabled').addEventListener('change', function() {
+  const on = this.checked;
+  document.getElementById('timeControls').style.display = on ? 'block' : 'none';
+  document.getElementById('switchLbl').textContent = on ? 'ativado' : 'desativado';
+});
+document.getElementById('btnDeparture').addEventListener('click', function() {
+  timeMode = 'departure';
+  document.getElementById('btnDeparture').classList.add('active');
+  document.getElementById('btnArrival').classList.remove('active');
+  document.getElementById('timePinLabel').textContent = 'Hora de partida';
+});
+document.getElementById('btnArrival').addEventListener('click', function() {
+  timeMode = 'arrival';
+  document.getElementById('btnArrival').classList.add('active');
+  document.getElementById('btnDeparture').classList.remove('active');
+  document.getElementById('timePinLabel').textContent = 'Hora de chegada';
+});
 } // end initApp
 </script>
 </body>
