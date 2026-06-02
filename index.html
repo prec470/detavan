@@ -769,6 +769,53 @@
   }
   .switch-wrap input:checked + .switch-track .switch-thumb { left: 18px; }
   .switch-lbl { font-size: 0.68rem; color: var(--muted); min-width: 56px; }
+
+  /* Origin / Destination selector */
+  .od-block {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .od-block.visible { display: flex; }
+
+  .od-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .od-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .od-label-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .od-label-dot.origin { background: var(--accent2); }
+  .od-label-dot.dest   { background: var(--ink); }
+
+  .od-select {
+    appearance: none;
+    background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8578'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 28px 7px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink);
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+  .od-select:focus { border-color: var(--accent); }
+  .od-select option { font-size: 0.75rem; }
 </style>
 </head>
 <body>
@@ -808,6 +855,32 @@
         </div>
       </div>
       <div class="hint" id="emptyHint">Nenhum ponto adicionado ainda.</div>
+
+      <div class="divider"></div>
+
+      <!-- ORIGIN / DESTINATION -->
+      <div class="od-block" id="odBlock">
+        <div class="section-label" style="margin-bottom:0">Origem e destino</div>
+
+        <div class="od-row">
+          <div class="od-label">
+            <span class="od-label-dot origin"></span>Origem
+          </div>
+          <select class="od-select" id="originSelect">
+            <option value="auto">Melhor ponto (otimização automática)</option>
+            <option value="location">Minha localização atual</option>
+          </select>
+        </div>
+
+        <div class="od-row">
+          <div class="od-label">
+            <span class="od-label-dot dest"></span>Destino final
+          </div>
+          <select class="od-select" id="destSelect">
+            <option value="auto">Melhor ponto (otimização automática)</option>
+          </select>
+        </div>
+      </div>
 
       <div class="divider"></div>
 
@@ -1225,7 +1298,7 @@ function removePoint(id) {
   points.splice(idx, 1);
   relabelAllMarkers();
   clearRoute();
-  renderList();
+  renderList(); // also calls updateODSelectors
   updateMidpointAndRadius();
   updateRouteButton();
   updatePointsHeader();
@@ -1272,6 +1345,7 @@ function renderList() {
   });
 
   if (orderMode === 'manual') setupDragDrop();
+  updateODSelectors();
 }
 
 // ── Letter marker helper ──────────────────────────────────────────────────
@@ -1326,6 +1400,76 @@ function movePoint(id, dir) {
   document.getElementById('pointsList').style.display = 'flex';
   listOpen = true;
   updatePointsHeader();
+}
+
+// ── Origin / Destination selectors ────────────────────────────────────────
+function updateODSelectors() {
+  const originSel = document.getElementById('originSelect');
+  const destSel   = document.getElementById('destSelect');
+  const block     = document.getElementById('odBlock');
+
+  if (points.length < 2) {
+    block.classList.remove('visible');
+    return;
+  }
+  block.classList.add('visible');
+
+  // Save current selections before rebuilding
+  const prevOrigin = originSel.value;
+  const prevDest   = destSel.value;
+
+  // Rebuild point options — keep static options first
+  // Origin: auto + location + each point
+  while (originSel.options.length > 2) originSel.remove(2);
+  points.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = 'point_' + p.id;
+    opt.textContent = pointLabel(i) + ' — ' + p.name;
+    originSel.appendChild(opt);
+  });
+
+  // Destination: auto + each point
+  while (destSel.options.length > 1) destSel.remove(1);
+  points.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = 'point_' + p.id;
+    opt.textContent = pointLabel(i) + ' — ' + p.name;
+    destSel.appendChild(opt);
+  });
+
+  // Restore previous selection if still valid
+  if (prevOrigin && [...originSel.options].some(o => o.value === prevOrigin))
+    originSel.value = prevOrigin;
+  if (prevDest && [...destSel.options].some(o => o.value === prevDest))
+    destSel.value = prevDest;
+}
+
+// Returns {origin, dest} objects to pin for routing
+// origin/dest are point objects or null (null = use optimiser result)
+function getODPins() {
+  const originVal = document.getElementById('originSelect').value;
+  const destVal   = document.getElementById('destSelect').value;
+
+  let originPin = null;
+  let destPin   = null;
+
+  if (originVal === 'location') {
+    // Virtual point at user location
+    if (userLat !== null) {
+      originPin = { id: '__loc__', name: 'Minha localização', lat: userLat, lng: userLng, marker: null, label: '•' };
+    }
+    // If location unavailable, fall back to auto
+  } else if (originVal.startsWith('point_')) {
+    const id = parseInt(originVal.replace('point_', ''));
+    originPin = points.find(p => p.id === id) || null;
+  }
+
+  if (destVal.startsWith('point_')) {
+    const id = parseInt(destVal.replace('point_', ''));
+    destPin = points.find(p => p.id === id) || null;
+  }
+
+  return { originPin, destPin };
 }
 
 // ── Drag & Drop reorder ────────────────────────────────────────────────────
@@ -1470,12 +1614,37 @@ async function calculateRoute() {
   if (points.length < 2) { showError('Adicione pelo menos 2 pontos.'); return; }
   hideError();
 
-  const ordered = orderMode === 'optimized' ? optimizeOrder(points) : [...points];
+  const { originPin, destPin } = getODPins();
+
+  // Pool = all points except explicitly pinned origin/dest
+  let pool = points.filter(p => {
+    if (originPin && originPin.id !== '__loc__' && p.id === originPin.id) return false;
+    if (destPin && p.id === destPin.id) return false;
+    return true;
+  });
+
+  let ordered;
+  if (orderMode === 'optimized') {
+    const middle = pool.length ? optimizeOrder(pool) : [];
+    const origin = originPin || (middle.length ? middle.shift() : points[0]);
+    const dest   = destPin   || (middle.length ? middle.pop()   : points[points.length - 1]);
+    ordered = [origin, ...middle, dest];
+  } else {
+    // Manual: preserve list order, swap in pinned endpoints
+    ordered = [...pool];
+    if (originPin) ordered.unshift(originPin);
+    if (destPin)   ordered.push(destPin);
+    if (!originPin && !destPin) ordered = [...points];
+  }
+
+  if (ordered.length >= 2 && ordered[0].id === ordered[ordered.length - 1].id) {
+    showError('Origem e destino são o mesmo ponto. Escolha pontos distintos.');
+    return;
+  }
 
   setLoading(true);
   clearRoute();
 
-  // Try OSRM first, fallback to straight-line if fetch fails
   try {
     await drawRoute(ordered);
   } catch(e) {
@@ -1612,11 +1781,29 @@ async function drawRoute(ordered) {
   map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
   ordered.forEach((p, i) => {
     const lbl = pointLabel(i);
-    map.removeLayer(p.marker);
+    if (p.marker) map.removeLayer(p.marker);
     p.marker = createLabelMarker(p.lat, p.lng, lbl, pointColor(i, ordered.length))
       .addTo(map)
       .bindPopup('<strong>' + lbl + '. ' + p.name + '</strong><br><small>' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + '</small>');
+    p.label = lbl;
   });
+
+  // Sync the global points array to match the routed order
+  // (only for points that exist in the global array — skip virtual loc pin)
+  const routedIds = ordered.map(p => p.id);
+  const inRoute = points.filter(p => routedIds.includes(p.id));
+  if (inRoute.length === points.length) {
+    // Full reorder: replace points array order to match route
+    points.splice(0, points.length, ...ordered.filter(p => p.id !== '__loc__'));
+  }
+
+  // Update sidebar list and OD selects to reflect new order/labels
+  renderList();
+  // Keep points list open after routing
+  listOpen = true;
+  document.getElementById('pointsList').style.display = 'flex';
+  updatePointsHeader();
+
   showInfo({ distance: result.distance, duration: result.duration, mode: 'road' }, ordered);
 }
 
@@ -1914,6 +2101,18 @@ document.getElementById('wazeToggle').addEventListener('click', () => {
 
 // Set today's date as default
 document.getElementById('dateInput').valueAsDate = new Date();
+
+// OD selectors — show warning if same point selected for both
+function checkODConflict() {
+  const ov = document.getElementById('originSelect').value;
+  const dv = document.getElementById('destSelect').value;
+  const conflict = ov.startsWith('point_') && ov === dv;
+  document.getElementById('errorMsg').classList.toggle('visible', conflict);
+  if (conflict) document.getElementById('errorMsg').textContent = 'Origem e destino são o mesmo ponto.';
+  else hideError();
+}
+document.getElementById('originSelect').addEventListener('change', checkODConflict);
+document.getElementById('destSelect').addEventListener('change', checkODConflict);
 
 // Time toggle switch
 let timeMode = 'departure';
